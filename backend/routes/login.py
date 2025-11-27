@@ -50,7 +50,6 @@ def admin_login():
 
 
 
-
 @login_bp.route('/singup', methods=['POST'])
 def user_singup():
     data = request.get_json()
