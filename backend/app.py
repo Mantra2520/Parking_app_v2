@@ -2,22 +2,29 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 # from flask_security import Security, SQLAlchemyUserDatastore
 from werkzeug.security import generate_password_hash
-from routes.login import*
-from routes.admin_home import *
+from backend.routes.login import login_bp
+from backend.routes.user import user_bp
+from backend.routes.admin import admin_bp
 
-from models.models import db, User, Role, Admin
+from backend.models.models import db, Admin
+
 
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, 
+        resources={r"/*": {"origins": "*"}},
+        supports_credentials=True,
+        expose_headers=["Authorization"],
+        allow_headers=["Content-Type", "Authorization"]
+    )
     
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///parking.db'
     app.config['SECRET_KEY'] = 'supersecret'
     app.config['SECURITY_PASSWORD_SALT'] = 'somesalt'
     app.config['SECURITY_REGISTERABLE'] = True
     app.config['SECURITY_SEND_REGISTER_EMAIL'] = False  
-    app.config['WTF_CSRF_ENABLED'] = False  
-    CORS(app)  
+    app.config['WTF_CSRF_ENABLED'] = False
 
     db.init_app(app)
 
@@ -32,27 +39,14 @@ def create_app():
             new_admin = Admin(admin='admin', password=hashed_pw)
             db.session.add(new_admin)
             db.session.commit()
-        if not User.query.filter_by(userid='mantra').first():
-            hashed_pw1 = generate_password_hash("mantra123")
-            new_user = User(userid="mantra", fullname="Mantra Patel", email="mantra@example.com", password=hashed_pw1,address="hi",pincode=123456)
-            db.session.add(new_user)
-            db.session.commit()
-            
+          
     app.register_blueprint(login_bp, url_prefix="/")
-    app.register_blueprint(admin_home_bp, url_prefix="/admin")
-
-
-
-    @app.route("/main")
-    def main():
-        data = [
-            {'name': "Mantra", 'age': 20},
-            {'name': "Om", 'age': 26}
-        ]
-        return jsonify(data)
+    app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(user_bp, url_prefix="/user")
 
     return app
 
+
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=True,port=5000)

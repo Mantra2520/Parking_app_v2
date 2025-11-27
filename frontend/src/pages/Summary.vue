@@ -4,3 +4,13 @@
         <p>This is the Summary page</p>
     </div>
 </template>
+<script>
+export default{
+    name:'Summary',
+    data(){
+        return{
+            
+        }
+    }
+}
+</script>

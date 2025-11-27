@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
-from models.models import db, User, Role, Admin
+from backend.models.models import db, User, Admin
 from werkzeug.security import check_password_hash,generate_password_hash
 import secrets
+from backend.redis_clients import redis_auth,redis_cach
 
 login_bp = Blueprint('login_bp', __name__)
 
@@ -18,13 +19,13 @@ def admin_login():
     admin = Admin.query.filter_by(admin=uid).first()
     user = User.query.filter_by(userid=uid).first()
     
-    # if not admin:
-    #     if not user:
-    #         return jsonify({"error": "userid not found Please Singup"}), 404
     if admin:
         if check_password_hash(admin.password, password):
             token = secrets.token_hex(16)
-            active_admin_tokens[token] = admin.id
+            active_admin_tokens[token] = admin.admin
+            
+            redis_auth.set(f"token:{token}", admin.admin, ex=14400)
+            
             return jsonify({"token": token, "admin_id": admin.id,"role":"admin"})
         else:
             return jsonify({"error": "Wrong password, Please try again."})
@@ -33,6 +34,9 @@ def admin_login():
         if check_password_hash(user.password, password):
             token = secrets.token_hex(16)
             active_user_tokens[token] = user.userid
+            
+            redis_auth.set(f"token:{token}", user.userid, ex=14400)
+            
             return jsonify({
                 "token": token,
                 "userid": user.userid,
@@ -57,6 +61,8 @@ def user_singup():
     ad=data.get('address')
     pc=data.get('pincode')
     
+    
+    
     if User.query.filter_by(userid=uid).first():
         return jsonify({"error": "User ID already exists"}), 400
 
@@ -75,6 +81,10 @@ def user_singup():
     )
     db.session.add(new_user)
     db.session.commit()
+    
+    cached=redis_cach.get("admid_users")
+    if cached:
+        redis_cach.delete("admid_users")
     
     return jsonify({"messsage":"User registered sucessfully"}), 201
 
